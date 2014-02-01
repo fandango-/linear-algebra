@@ -30,9 +30,6 @@ typedef struct frac_struct {
 	fmpz_t den;
 } Fraction;
 
-int rows;
-int cols;
-
 Fraction frac_divide(Fraction res, Fraction a, Fraction b)
 {
 	fmpz_mul(res.num, a.num, b.den);
@@ -55,7 +52,7 @@ Fraction frac_multiply(Fraction res, Fraction a, Fraction b)
 	return res;
 }
 
-void inverse(Fraction m[rows][2*cols])
+void inverse(Fraction *m, int rows, int cols)
 {
 	int r = 0;
 	int i, j, k, l;
@@ -67,7 +64,7 @@ void inverse(Fraction m[rows][2*cols])
 		l = -1;
 		i = r;
 		while(l == -1 && i < rows) {
-			if(!fmpz_is_zero(m[i][j].num)) {
+			if(!fmpz_is_zero(m[i*2*cols+j].num)) {
 				l = i;
 			}
 			i++;
@@ -75,31 +72,31 @@ void inverse(Fraction m[rows][2*cols])
 		if(l != -1) {
 			if(l != r) {
 				for(k = 0; k < 2 * cols; k++) {
-					temp = m[r][k];
-					m[r][k] = m[l][k];
-					m[l][k] = temp;
+					temp = m[r*2*cols+k];
+					m[r*2*cols+k] = m[l*2*cols+k];
+					m[l*2*cols+k] = temp;
 				}
 				fmpz_mul_si(det.num, det.num, -1);
 			}
-			temp = m[r][j];
+			temp = m[r*2*cols+j];
 			det = frac_multiply(det, det, temp);
 			fmpz_gcd(g, det.num, det.den);
 			fmpz_divexact(det.num, det.num, g);
 			fmpz_divexact(det.den, det.den, g);
 			for(k = 0; k < 2 * cols; k++) {
-				m[r][k] = frac_divide(m[r][k], m[r][k], temp);
-				fmpz_gcd(g, m[r][k].num, m[r][k].den);
-				fmpz_divexact(m[r][k].num, m[r][k].num, g);
-				fmpz_divexact(m[r][k].den, m[r][k].den, g);
+				m[r*2*cols+k] = frac_divide(m[r*2*cols+k], m[r*2*cols+k], temp);
+				fmpz_gcd(g, m[r*2*cols+k].num, m[r*2*cols+k].den);
+				fmpz_divexact(m[r*2*cols+k].num, m[r*2*cols+k].num, g);
+				fmpz_divexact(m[r*2*cols+k].den, m[r*2*cols+k].den, g);
 			}
 			for(i = 0; i < rows; i++) {
-				temp = m[i][j];
+				temp = m[i*2*cols+j];
 				if(i != r) {
 					for(k = 0; k < 2 * cols; k++) {
-						m[i][k] = frac_subtract(m[i][k], m[i][k], frac_multiply(temp, temp, m[r][k]));
-						fmpz_gcd(g, m[i][k].num, m[i][k].den);
-						fmpz_divexact(m[i][k].num, m[i][k].num, g);
-						fmpz_divexact(m[i][k].den, m[i][k].den, g);
+						m[i*2*cols+k] = frac_subtract(m[i*2*cols+k], m[i*2*cols+k], frac_multiply(temp, temp, m[r*2*cols+k]));
+						fmpz_gcd(g, m[i*2*cols+k].num, m[i*2*cols+k].den);
+						fmpz_divexact(m[i*2*cols+k].num, m[i*2*cols+k].num, g);
+						fmpz_divexact(m[i*2*cols+k].den, m[i*2*cols+k].den, g);
 					}
 				}
 			}
@@ -108,24 +105,24 @@ void inverse(Fraction m[rows][2*cols])
 	}
 	for(i = 0; i < rows; i++) {
 		for(j = cols; j < 2 * cols; j++) {
-			if(fmpz_equal_si(m[i][j].den, -1)) {
-				fmpz_neg(m[i][j].num, m[i][j].num);
-				fmpz_print(m[i][j].num);
+			if(fmpz_equal_si(m[i*2*cols+j].den, -1)) {
+				fmpz_neg(m[i*2*cols+j].num, m[i*2*cols+j].num);
+				fmpz_print(m[i*2*cols+j].num);
 				printf("\t");
-			} else if(fmpz_equal_ui(m[i][j].den, 1)) {
-				fmpz_print(m[i][j].num);
+			} else if(fmpz_equal_ui(m[i*2*cols+j].den, 1)) {
+				fmpz_print(m[i*2*cols+j].num);
 				printf("\t");
-			} else if(fmpz_cmp_si(m[i][j].den, 0) < 0) {
-				fmpz_neg(m[i][j].num, m[i][j].num);
-				fmpz_neg(m[i][j].den, m[i][j].den);
-				fmpz_print(m[i][j].num);
+			} else if(fmpz_cmp_si(m[i*2*cols+j].den, 0) < 0) {
+				fmpz_neg(m[i*2*cols+j].num, m[i*2*cols+j].num);
+				fmpz_neg(m[i*2*cols+j].den, m[i*2*cols+j].den);
+				fmpz_print(m[i*2*cols+j].num);
 				printf("/");
-				fmpz_print(m[i][j].den);
+				fmpz_print(m[i*2*cols+j].den);
 				printf("\t");
 			} else {
-				fmpz_print(m[i][j].num);
+				fmpz_print(m[i*2*cols+j].num);
 				printf("/");
-				fmpz_print(m[i][j].den);
+				fmpz_print(m[i*2*cols+j].den);
 				printf("\t");
 			}
 		}
@@ -137,10 +134,11 @@ void inverse(Fraction m[rows][2*cols])
 	printf("Its determinant is:\n");
 	fmpz_print(det.num);
 	printf("\n");
+	free(m);
 	return;
 }
 
-int rref(Fraction m[rows][cols])
+int rref(Fraction *m, int rows, int cols)
 {
 	int r = 0;
 	int i, j, k, l;
@@ -150,7 +148,7 @@ int rref(Fraction m[rows][cols])
 		l = -1;
 		i = r;
 		while(l == -1 && i < rows) {
-			if(!fmpz_is_zero(m[i][j].num)) {
+			if(!fmpz_is_zero(m[i*cols+j].num)) {
 				l = i;
 			}
 			i++;
@@ -158,26 +156,26 @@ int rref(Fraction m[rows][cols])
 		if(l != -1) {
 			if(l != r) {
 				for(k = 0; k < cols; k++) {
-					temp = m[r][k];
-					m[r][k] = m[l][k];
-					m[l][k] = temp;
+					temp = m[r*cols+k];
+					m[r*cols+k] = m[l*cols+k];
+					m[l*cols+k] = temp;
 				}
 			}
-			temp = m[r][j];
+			temp = m[r*cols+j];
 			for(k = 0; k < cols; k++) {
-				m[r][k] = frac_divide(m[r][k], m[r][k], temp);
-				fmpz_gcd(g, m[r][k].num, m[r][k].den);
-				fmpz_divexact(m[r][k].num, m[r][k].num, g);
-				fmpz_divexact(m[r][k].den, m[r][k].den, g);
+				m[r*cols+k] = frac_divide(m[r*cols+k], m[r*cols+k], temp);
+				fmpz_gcd(g, m[r*cols+k].num, m[r*cols+k].den);
+				fmpz_divexact(m[r*cols+k].num, m[r*cols+k].num, g);
+				fmpz_divexact(m[r*cols+k].den, m[r*cols+k].den, g);
 			}
 			for(i = 0; i < rows; i++) {
-				temp = m[i][j];
+				temp = m[i*cols+j];
 				if(i != r) {
 					for(k = 0; k < cols; k++) {
-						m[i][k] = frac_subtract(m[i][k], m[i][k], frac_multiply(temp, temp, m[r][k]));
-						fmpz_gcd(g, m[i][k].num, m[i][k].den);
-						fmpz_divexact(m[i][k].num, m[i][k].num, g);
-						fmpz_divexact(m[i][k].den, m[i][k].den, g);
+						m[i*cols+k] = frac_subtract(m[i*cols+k], m[i*cols+k], frac_multiply(temp, temp, m[r*cols+k]));
+						fmpz_gcd(g, m[i*cols+k].num, m[i*cols+k].den);
+						fmpz_divexact(m[i*cols+k].num, m[i*cols+k].num, g);
+						fmpz_divexact(m[i*cols+k].den, m[i*cols+k].den, g);
 					}
 				}
 			}
@@ -187,29 +185,29 @@ int rref(Fraction m[rows][cols])
 	int flag = 1;
 	for(i = 0; i < rows; i++) {
 		for(j = 0; j < cols; j++) {
-			if(fmpz_equal_si(m[i][j].den, -1)) {
-				fmpz_neg(m[i][j].num, m[i][j].num);
-				fmpz_print(m[i][j].num);
+			if(fmpz_equal_si(m[i*cols+j].den, -1)) {
+				fmpz_neg(m[i*cols+j].num, m[i*cols+j].num);
+				fmpz_print(m[i*cols+j].num);
 				printf("\t");
-			} else if(fmpz_equal_ui(m[i][j].den, 1)) {
-				fmpz_print(m[i][j].num);
+			} else if(fmpz_equal_ui(m[i*cols+j].den, 1)) {
+				fmpz_print(m[i*cols+j].num);
 				printf("\t");
-			} else if(fmpz_cmp_si(m[i][j].den, 0) < 0) {
-				fmpz_neg(m[i][j].num, m[i][j].num);
-				fmpz_neg(m[i][j].den, m[i][j].den);
-				fmpz_print(m[i][j].num);
+			} else if(fmpz_cmp_si(m[i*cols+j].den, 0) < 0) {
+				fmpz_neg(m[i*cols+j].num, m[i*cols+j].num);
+				fmpz_neg(m[i*cols+j].den, m[i*cols+j].den);
+				fmpz_print(m[i*cols+j].num);
 				printf("/");
-				fmpz_print(m[i][j].den);
+				fmpz_print(m[i*cols+j].den);
 				printf("\t");
 			} else {
-				fmpz_print(m[i][j].num);
+				fmpz_print(m[i*cols+j].num);
 				printf("/");
-				fmpz_print(m[i][j].den);
+				fmpz_print(m[i*cols+j].den);
 				printf("\t");
 			}
 			if(rows == cols) {
 				if(i == j) {
-					if(!fmpz_equal_ui(m[i][j].num, 1)) {
+					if(!fmpz_equal_ui(m[i*cols+j].num, 1)) {
 						flag = 0;
 					}
 				}
@@ -217,48 +215,53 @@ int rref(Fraction m[rows][cols])
 		}
 		printf("\n");
 	}
+	free(m);
 	return flag;
 }
 
 int main(int argc, char **argv)
 {
+	int rows, cols;
 	printf("Enter number of rows:\n");
 	scanf("%d", &rows);
 	printf("Enter number of columns:\n");
 	scanf("%d", &cols);
-	Fraction m[rows][cols];
-	Fraction mi[rows][2*cols];
+	Fraction *m = (Fraction *) malloc(sizeof(Fraction)*rows*cols);
+	Fraction *mi = (Fraction *) malloc(sizeof(Fraction)*rows*2*cols);
     int i, j;
     printf("Enter the elements:\n");
     for(i = 0; i < rows; i++) {
 		for(j = 0; j < cols; j++) {
-			fmpz_read(m[i][j].num);
-			fmpz_init_set_ui(m[i][j].den, 1);
+			fmpz_read(m[i*cols+j].num);
+			fmpz_init_set_ui(m[i*cols+j].den, 1);
 			if(rows == cols) {
-				mi[i][j] = m[i][j];
+				mi[i*2*cols+j] = m[i*cols+j];
 			}
 		}
 	}
 	printf("The reduced row echelon form of the given matrix is:\n");
-    int f = rref(m);
+    int f = rref(m, rows, cols);
     if(rows == cols) {
 		printf("The given matrix is square.\n");
 		if(f == 0) {
 			printf("However, it is singular and hence not invertible.\n");
+			free(mi);
 		} else {
 			for(i = 0; i < rows; i++) {
 				for(j = cols; j < 2 * cols; j++) {
 					if(j == i + cols) {
-						fmpz_init_set_ui(mi[i][j].num, 1);
+						fmpz_init_set_ui(mi[i*2*cols+j].num, 1);
 					} else {
-						fmpz_init(mi[i][j].num);
+						fmpz_init(mi[i*2*cols+j].num);
 					}
-					fmpz_init_set_ui(mi[i][j].den, 1);
+					fmpz_init_set_ui(mi[i*2*cols+j].den, 1);
 				}
 			}
 			printf("It is non-singular and its inverse is:\n");
-			inverse(mi);
+			inverse(mi, rows, cols);
 		}
+	} else {
+		free(mi);
 	}
 	return 0;
 }

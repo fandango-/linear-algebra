@@ -1,0 +1,56 @@
+make[1]: Entering directory `/home/aman/flint2'
+make[1]: Nothing to be done for `shared'.
+make[1]: Leaving directory `/home/aman/flint2'
+make[1]: Entering directory `/home/aman/flint2'
+make[1]: Nothing to be done for `static'.
+make[1]: Leaving directory `/home/aman/flint2'
+make[1]: Entering directory `/home/aman/flint2/fmpz_mat'
+add/sub/neg....PASS
+charpoly....PASS
+CRT_ui....PASS
+CRT_ui_unsigned....PASS
+det_bound....PASS
+det....PASS
+det_divisor....PASS
+det_modular_accelerated....PASS
+det_modular....PASS
+entry....PASS
+equal....PASS
+get/set_nmod_mat....PASS
+gram....PASS
+init/clear....PASS
+inv....PASS
+is_empty....PASS
+is_square....PASS
+is_zero....PASS
+max_bits....PASS
+mul....PASS
+mul_classical....PASS
+mul_multi_mod....PASS
+multi_CRT_ui....PASS
+multi_CRT_ui_unsigned....PASS
+nullspace....PASS
+one....PASS
+pow....PASS
+print/ read....PASS
+rank....PASS
+rref....PASS
+rref_mod....PASS
+scalar_add/submul_fmpz....PASS
+scalar_add/submul_nmod_mat_fmpz....PASS
+scalar_add/submul_nmod_mat_ui....PASS
+scalar_add/submul_si....PASS
+scalar_add/submul_ui....PASS
+scalar_mod_fmpz....PASS
+scalar_mul/divexact_fmpz....PASS
+scalar_mul/divexact_si....PASS
+scalar_mul/divexact_ui....PASS
+solve_bound....PASS
+solve....PASS
+solve_cramer....PASS
+solve_dixon....PASS
+sqr....PASS
+trace....PASS
+transpose....PASS
+zero....PASS
+make[1]: Leaving directory `/home/aman/flint2/fmpz_mat'

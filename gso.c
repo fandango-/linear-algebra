@@ -29,12 +29,7 @@ void fmpq_mat_gso(fmpq_mat_t B, const fmpq_mat_t A)
 		}
 		fmpq_mat_clear(t);
 	}
-	
-	if(!A->r) {
-		fmpq_mat_zero(B);
-		return;
-	}
-			
+				
 	for(i = 0; i < A->c; i++) {
 		for(j = 0; j < A->r; j++) {
 			fmpq_set(fmpq_mat_entry(B, j, i),
@@ -42,21 +37,17 @@ void fmpq_mat_gso(fmpq_mat_t B, const fmpq_mat_t A)
 		}
 
 		for(j = 0; j < i; j++) {
-			fmpq_mul(num,
-					 fmpq_mat_entry(A, 0, i),
-					 fmpq_mat_entry(B, 0, j));
+			fmpq_zero(num);
 					 
-			for(k = 1; k < A->r; k++) {
+			for(k = 0; k < A->r; k++) {
 				fmpq_addmul(num,
 							fmpq_mat_entry(A, k, i),
 							fmpq_mat_entry(B, k, j));
 			}
 			
-			fmpq_mul(den,
-					 fmpq_mat_entry(B, 0, j),
-					 fmpq_mat_entry(B, 0, j));
+			fmpq_zero(den);
 										
-			for(k = 1; k < A->r; k++) {
+			for(k = 0; k < A->r; k++) {
 				fmpq_addmul(den,
 							fmpq_mat_entry(B, k, j),
 							fmpq_mat_entry(B, k, j));
@@ -112,12 +103,9 @@ int main(void)
         for(j = 0; j < n; j++) {
 			for(k = j + 1; k < n; k++) {
 				
-				if(A->r)
-				fmpq_mul(dot, 
-						 fmpq_mat_entry(A, 0, j),
-						 fmpq_mat_entry(A, 0, k));
+				fmpq_zero(dot);
 									  
-				for(l = 1; l < m; l++)
+				for(l = 0; l < m; l++)
 				{
 					fmpq_addmul(dot,
 								fmpq_mat_entry(A, l, j),
@@ -127,7 +115,6 @@ int main(void)
 				if (!fmpq_is_zero(dot))
 				{
 					flint_printf("FAIL:\n");
-					fmpq_print(dot);
 					flint_printf("A:\n");
 					fmpq_mat_print(A);
 					abort();

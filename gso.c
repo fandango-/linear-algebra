@@ -29,6 +29,11 @@ void fmpq_mat_gso(fmpq_mat_t B, const fmpq_mat_t A)
 		}
 		fmpq_mat_clear(t);
 	}
+	
+	if(!A->r)
+	{
+		return;
+	}
 				
 	for(i = 0; i < A->c; i++) {
 		for(j = 0; j < A->r; j++) {
@@ -37,17 +42,21 @@ void fmpq_mat_gso(fmpq_mat_t B, const fmpq_mat_t A)
 		}
 
 		for(j = 0; j < i; j++) {
-			fmpq_zero(num);
+			fmpq_mul(num,
+					 fmpq_mat_entry(A, 0, i),
+					 fmpq_mat_entry(B, 0, j));
 					 
-			for(k = 0; k < A->r; k++) {
+			for(k = 1; k < A->r; k++) {
 				fmpq_addmul(num,
 							fmpq_mat_entry(A, k, i),
 							fmpq_mat_entry(B, k, j));
 			}
 			
-			fmpq_zero(den);
+			fmpq_mul(den,
+					 fmpq_mat_entry(B, 0, j),
+					 fmpq_mat_entry(B, 0, j));
 										
-			for(k = 0; k < A->r; k++) {
+			for(k = 1; k < A->r; k++) {
 				fmpq_addmul(den,
 							fmpq_mat_entry(B, k, j),
 							fmpq_mat_entry(B, k, j));

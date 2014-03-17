@@ -4,6 +4,7 @@
 #include <math.h>
 #include "flint/flint.h"
 #include "flint/ulong_extras.h"
+#include "flint/double_extras.h"
 #include "test_helpers.c"
 
 int random_d(flint_rand_t state)
@@ -107,8 +108,9 @@ double _d_vec_norm(double * vec, ulong n)
 
 void d_mat_gso(double ** B, const double ** A, ulong r, ulong c)
 {
-	slong i, j, k;
-	double num, den, mu;
+	slong i, j, k, flag;
+	/* double num, den, mu, dot; */
+	double t, s;
 	
 	if((double **) B == (double **) A) {
 		double ** t;
@@ -127,12 +129,50 @@ void d_mat_gso(double ** B, const double ** A, ulong r, ulong c)
 	{
 		return;
 	}
+		
+	for(k = 0; k < c; k++) {
+		for(j = 0; j < r; j++) {
+			B[j][k] = A[j][k];
+		}
+		flag = 1;
+		while (flag) {
+			t = 0;
+			for(i = 0; i < k; i++) {
+				s = 0;
+				for(j = 0; j < r; j++) {
+					s += B[j][i] * B[j][k];
+				}
+				t += s * s;
+				for(j = 0; j < r; j++) {
+					B[j][k] -= s * B[j][i];
+				}
+			}
+			s = 0;
+			for(j = 0; j < r; j++) {
+				s += B[j][k] * B[j][k];
+			}
+			t += s;
+			flag = 0;
+			if(s < t) {
+				if(s * D_EPS == 0) s = 0;
+				else flag = 1;
+			}
+		}
+		s = sqrt(s);
+		if(s != 0) s = 1/s;
+		for(j = 0; j < r; j++) {
+			B[j][k] *= s;
+		}
+	}
 				
-	for(i = 0; i < c; i++) {
+	/* for(i = 0; i < c; i++) {
 		for(j = 0; j < r; j++) {
 			B[j][i] = A[j][i];
 		}
+		
+		flag = 1;
 
+		while (flag) {
 		for(j = 0; j < i; j++) {
 			num = B[0][i] * B[0][j];
 					 
@@ -155,53 +195,66 @@ void d_mat_gso(double ** B, const double ** A, ulong r, ulong c)
 				}
 			}
 		}
-		
-		for(j = 0; j < i; j++) {
-			num = B[0][i] * B[0][j];
-					 
-			for(k = 1; k < r; k++) {
-				num += B[k][i] * B[k][j];
+		for (j = 0; j < i; j++) {
+			dot = 0;
+			for(k = 0; k < r; k++) {
+				dot += B[k][i] * B[k][j];
 			}
-			
-			den = B[0][j] * B[0][j];
-										
-			for(k = 1; k < r; k++) {
-				den += B[k][j] * B[k][j];
-			}
-			
-			if(fabs(den) > 0)
-			{
-				mu = num / den;
-			
-				for(k = 0; k < r; k++) {
-					B[k][i] -= mu * B[k][j];
-				}
+			if(fabs(dot) > 0.5e-12) {
+				break;
 			}
 		}
-		
-		for(j = 0; j < i; j++) {
-			num = B[0][i] * B[0][j];
-					 
-			for(k = 1; k < r; k++) {
-				num += B[k][i] * B[k][j];
-			}
-			
-			den = B[0][j] * B[0][j];
-										
-			for(k = 1; k < r; k++) {
-				den += B[k][j] * B[k][j];
-			}
-			
-			if(fabs(den) > 0)
-			{
-				mu = num / den;
-			
-				for(k = 0; k < r; k++) {
-					B[k][i] -= mu * B[k][j];
-				}
-			}
+		if (j == i) {
+			flag = 0;
 		}
 	}
+			
+		for(j = 0; j < i; j++) {
+			num = B[0][i] * B[0][j];
+					 
+			for(k = 1; k < r; k++) {
+				num += B[k][i] * B[k][j];
+			}
+			
+			den = B[0][j] * B[0][j];
+										
+			for(k = 1; k < r; k++) {
+				den += B[k][j] * B[k][j];
+			}
+			
+			if(fabs(den) > 0)
+			{
+				mu = num / den;
+			
+				for(k = 0; k < r; k++) {
+					B[k][i] -= mu * B[k][j];
+				}
+			}
+		}
+		
+		for(j = 0; j < i; j++) {
+			num = B[0][i] * B[0][j];
+					 
+			for(k = 1; k < r; k++) {
+				num += B[k][i] * B[k][j];
+			}
+			
+			den = B[0][j] * B[0][j];
+										
+			for(k = 1; k < r; k++) {
+				den += B[k][j] * B[k][j];
+			}
+			
+			if(fabs(den) > 0)
+			{
+				mu = num / den;
+			
+				for(k = 0; k < r; k++) {
+					B[k][i] -= mu * B[k][j];
+				}
+			}
+		}
+	} */
 }
 
 int main(void) 
@@ -226,7 +279,7 @@ int main(void)
         A = d_mat_init(m, n);        
         
         random_d_mat(A, state, m, n);
-               
+                       
         d_mat_gso(A, (void *) A, m, n);
         
         for(j = 0; j < n; j++) {
@@ -236,8 +289,8 @@ int main(void)
 				for(l = 0; l < m; l++) {
 				dot += A[l][j] * A[l][k];
 				}
-				
-				if (fabs(dot) > 1e-12)
+																
+				if (fabs(dot) > D_EPS)
 				{
 					flint_printf("FAIL:\n");
 					flint_printf("A:\n");

@@ -26,7 +26,7 @@ double ** d_mat_init(ulong r, ulong c)
 {
    double ** B;
 
-   B = (double **) malloc (r*sizeof(double*) + r*c*sizeof(double));
+   B = (double **) malloc ((r+1)*sizeof(double*) + r*c*sizeof(double));
     B[0] = (double *) (B + r);
 	long i;
 	for (i = 1; i < r; i++) B[i] = B[i-1] + c;

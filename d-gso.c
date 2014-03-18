@@ -25,11 +25,13 @@ void random_d_mat(double ** mat, flint_rand_t state, ulong rows, ulong cols)
 double ** d_mat_init(ulong r, ulong c)
 {
    double ** B;
-
-   B = (double **) malloc ((r+1)*sizeof(double*) + r*c*sizeof(double));
+	
+	if(r) {
+   B = (double **) malloc (r*sizeof(double*) + r*c*sizeof(double));
     B[0] = (double *) (B + r);
 	long i;
-	for (i = 1; i < r; i++) B[i] = B[i-1] + c;
+	for (i = 1; i < r; i++) B[i] = B[i-1] + c; }
+	else B = malloc(sizeof(double **));
 	
 	return B;
 }
@@ -112,9 +114,8 @@ void d_mat_gso(double ** B, const double ** A, ulong r, ulong c)
 	/* double num, den, mu, dot; */
 	double t, s;
 	
-	if((double **) B == (double **) A) {
-		double ** t;
-		t = d_mat_init(r, c);
+	if((double **) B == (double **) A) {		
+		double ** t = d_mat_init(r, c);
 		d_mat_gso(t, A, r, c);
 		for(i = 0; i < r; i++) {
 			for(j = 0; j < c; j++) {
@@ -267,7 +268,6 @@ int main(void)
     fflush(stdout);
 
 	for(i = 0; i < 100 * flint_test_multiplier(); i++) {
-        double ** A;
         double dot;
         int j, k, l;
 
@@ -276,7 +276,7 @@ int main(void)
         m = n_randint(state, 10);
         n = n_randint(state, 10);
 
-        A = d_mat_init(m, n);        
+        double ** A = d_mat_init(m, n);        
         
         random_d_mat(A, state, m, n);
                        

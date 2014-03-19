@@ -7,56 +7,73 @@
 #include "flint/double_extras.h"
 #include "test_helpers.c"
 
-int random_d(flint_rand_t state)
+typedef struct
 {
-   if (n_randint(state, 2)) return rand() % 50;
-   else return -rand() % 50;
+	double * entries;
+	slong r;
+	slong c;
+	double ** rows;
+} d_mat_struct;
+
+typedef d_mat_struct d_mat_t[1];
+
+void d_mat_randtest(d_mat_t mat, flint_rand_t state)
+{
+    slong r, c, i, j;
+
+    r = mat->r;
+    c = mat->c;
+
+    for (i = 0; i < r; i++)
+        for (j = 0; j < c; j++)
+            * (mat->rows[i] + j) = d_randtest(state);
 }
 
-void random_d_mat(double ** mat, flint_rand_t state, ulong rows, ulong cols)
+void d_mat_init(d_mat_t mat, slong rows, slong cols)
 {
-   ulong i, j;
+    if ((rows) && (cols))
+    {
+        slong i;
+        mat->entries = flint_calloc(rows * cols, sizeof(double));
+        mat->rows = flint_malloc(rows * sizeof(double *));
+        
+        for (i = 0; i < rows; i++)
+            mat->rows[i] = mat->entries + i * cols;
+    }
+    else
+        mat->entries = NULL;
 
-   for (i = 0; i < rows; i++)
-      for (j = 0; j < cols; j++)
-	     mat[i][j] = random_d(state);
+    mat->r = rows;
+    mat->c = cols;
 }
 
-double ** d_mat_init(ulong r, ulong c)
+void d_mat_clear(d_mat_t mat)
 {
-   double ** B;
-	
-	if(r) {
-   B = (double **) malloc (r*sizeof(double*) + r*c*sizeof(double));
-    B[0] = (double *) (B + r);
-	long i;
-	for (i = 1; i < r; i++) B[i] = B[i-1] + c; }
-	else B = malloc(sizeof(double **));
-	
-	return B;
+    if (mat->entries)
+    {
+        flint_free(mat->entries);
+        flint_free(mat->rows);
+    }
 }
 
-void d_mat_clear(double ** B)
+void d_mat_print(d_mat_t B) 
 {
-   free(B);
-}
-
-void d_mat_print(double ** B, ulong r, ulong c) 
-{
+	if (B->entries) {
    long i, j; 
 
    printf("[");
-   for (i = 0; i < r; i++) 
+   for (i = 0; i < B->r; i++) 
    {
       printf("[");
-      for (j = 0; j < c; j++) 
+      for (j = 0; j < B->c; j++) 
       { 
-         printf("%E", B[i][j]); 
-         if (j < c-1) printf(" "); 
+         printf("%E", *(B->rows[i] + j)); 
+         if (j < B->c-1) printf(" "); 
       }
       printf("]\n");
    }  
    printf("]\n"); 
+}
 }
 
 void d_swap(double * a, double * b)
@@ -68,6 +85,20 @@ void d_swap(double * a, double * b)
 		*a = *b;
 		*b = tmp;
 	}
+}
+
+void d_mat_swap_rows(d_mat_t mat, slong r, slong s)
+{
+	if (mat->entries) {
+    if (r != s)
+    {
+        double * u;
+        
+        u = mat->rows[s];
+        mat->rows[s] = mat->rows[r];
+        mat->rows[r] = u; 
+    }
+}
 }
 
 void _d_vec_add(double * r1, double * r2, double * r3, ulong n)
@@ -108,10 +139,10 @@ double _d_vec_norm(double * vec, ulong n)
   return sum;
 } 
 
-void d_mat_gso(double ** B, const double ** A, ulong r, ulong c)
+/* void d_mat_gso(double ** B, const double ** A, ulong r, ulong c)
 {
 	slong i, j, k, flag;
-	/* double num, den, mu, dot; */
+	double num, den, mu, dot;
 	double t, s;
 	
 	if((double **) B == (double **) A) {		
@@ -166,7 +197,7 @@ void d_mat_gso(double ** B, const double ** A, ulong r, ulong c)
 		}
 	}
 				
-	/* for(i = 0; i < c; i++) {
+	for(i = 0; i < c; i++) {
 		for(j = 0; j < r; j++) {
 			B[j][i] = A[j][i];
 		}
@@ -255,32 +286,33 @@ void d_mat_gso(double ** B, const double ** A, ulong r, ulong c)
 				}
 			}
 		}
-	} */
-}
+	}
+} */
 
 int main(void) 
 {
-	int i;
+	// int i;
     FLINT_TEST_INIT(state);
     
 
-    flint_printf("gso....");
+    /* flint_printf("gso....");
     fflush(stdout);
 
 	for(i = 0; i < 100 * flint_test_multiplier(); i++) {
         double dot;
         int j, k, l;
+        d_mat_t A;
 
         slong m, n;
 
         m = n_randint(state, 10);
         n = n_randint(state, 10);
-
-        double ** A = d_mat_init(m, n);        
+		
+        d_mat_init(A, m, n);        
         
-        random_d_mat(A, state, m, n);
+        d_mat_randtest(A, state);
                        
-        d_mat_gso(A, (void *) A, m, n);
+        // d_mat_gso(A, (void *) A, m, n);
         
         for(j = 0; j < n; j++) {
 			for(k = j + 1; k < n; k++) {
@@ -303,9 +335,27 @@ int main(void)
 		}
 				
         d_mat_clear(A);
+	} */
+	int i;
+	
+	for(i = 0; i < 100 * flint_test_multiplier(); i++) {
+		int m, n;
+		d_mat_t A;
+	
+		m = n_randint(state, 10);
+		n = n_randint(state, 10);
+		
+		d_mat_init(A, m, n);        
+        
+		d_mat_randtest(A, state);
+				
+		d_mat_swap_rows(A, 0, m-1);
+		
+		d_mat_clear(A);
 	}
-
-
+	
+	
+	
     FLINT_TEST_CLEANUP(state);
     
     flint_printf("PASS\n");

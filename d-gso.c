@@ -58,7 +58,6 @@ void d_mat_clear(d_mat_t mat)
 
 void d_mat_print(d_mat_t B) 
 {
-	if (B->entries) {
    long i, j; 
 
    printf("[");
@@ -73,7 +72,6 @@ void d_mat_print(d_mat_t B)
       printf("]\n");
    }  
    printf("]\n"); 
-}
 }
 
 void d_swap(double * a, double * b)

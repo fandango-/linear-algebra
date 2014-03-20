@@ -17,87 +17,7 @@ typedef struct
 
 typedef d_mat_struct d_mat_t[1];
 
-void d_mat_randtest(d_mat_t mat, flint_rand_t state)
-{
-    slong r, c, i, j;
-
-    r = mat->r;
-    c = mat->c;
-
-    for (i = 0; i < r; i++)
-        for (j = 0; j < c; j++)
-            * (mat->rows[i] + j) = d_randtest(state);
-}
-
-void d_mat_init(d_mat_t mat, slong rows, slong cols)
-{
-    if ((rows) && (cols))
-    {
-        slong i;
-        mat->entries = flint_calloc(rows * cols, sizeof(double));
-        mat->rows = flint_malloc(rows * sizeof(double *));
-        
-        for (i = 0; i < rows; i++)
-            mat->rows[i] = mat->entries + i * cols;
-    }
-    else
-        mat->entries = NULL;
-
-    mat->r = rows;
-    mat->c = cols;
-}
-
-void d_mat_clear(d_mat_t mat)
-{
-    if (mat->entries)
-    {
-        flint_free(mat->entries);
-        flint_free(mat->rows);
-    }
-}
-
-void d_mat_print(d_mat_t B) 
-{
-   long i, j; 
-
-   printf("[");
-   for (i = 0; i < B->r; i++) 
-   {
-      printf("[");
-      for (j = 0; j < B->c; j++) 
-      { 
-         printf("%E", *(B->rows[i] + j)); 
-         if (j < B->c-1) printf(" "); 
-      }
-      printf("]\n");
-   }  
-   printf("]\n"); 
-}
-
-void d_swap(double * a, double * b)
-{
-	if (a != b) {
-		double tmp;
-		
-		tmp = *a;
-		*a = *b;
-		*b = tmp;
-	}
-}
-
-void d_mat_swap_rows(d_mat_t mat, slong r, slong s)
-{
-	if (mat->entries) {
-    if (r != s)
-    {
-        double * u;
-        
-        u = mat->rows[s];
-        mat->rows[s] = mat->rows[r];
-        mat->rows[r] = u; 
-    }
-}
-}
+#define d_mat_entry(mat,i,j) (*((mat)->rows[i] + (j)))
 
 void _d_vec_add(double * r1, double * r2, double * r3, ulong n)
 {
@@ -135,168 +55,182 @@ double _d_vec_norm(double * vec, ulong n)
      sum += vec[i] * vec[i];
 
   return sum;
+}
+
+void _d_vec_set(double * vec1, const double * vec2, slong len2)
+{
+	if (vec1 != vec2) {
+		slong i;
+		for (i = 0; i < len2; i++)
+			vec1[i] = vec2[i];
+	}
 } 
 
-/* void d_mat_gso(double ** B, const double ** A, ulong r, ulong c)
+void d_mat_randtest(d_mat_t mat, flint_rand_t state)
+{
+    slong r, c, i, j;
+
+    r = mat->r;
+    c = mat->c;
+
+    for (i = 0; i < r; i++)
+        for (j = 0; j < c; j++)
+            d_mat_entry(mat, i, j) = d_randtest(state);
+}
+
+void d_mat_init(d_mat_t mat, slong rows, slong cols)
+{
+    if ((rows) && (cols))
+    {
+        slong i;
+        mat->entries = flint_calloc(rows * cols, sizeof(double));
+        mat->rows = flint_malloc(rows * sizeof(double *));
+        
+        for (i = 0; i < rows; i++)
+            mat->rows[i] = mat->entries + i * cols;
+    }
+    else
+        mat->entries = NULL;
+
+    mat->r = rows;
+    mat->c = cols;
+}
+
+void d_mat_clear(d_mat_t mat)
+{
+    if (mat->entries)
+    {
+        flint_free(mat->entries);
+        flint_free(mat->rows);
+    }
+}
+
+void d_mat_print(d_mat_t B) 
+{
+   long i, j; 
+
+   flint_printf("[");
+   for (i = 0; i < B->r; i++) 
+   {
+      flint_printf("[");
+      for (j = 0; j < B->c; j++) 
+      { 
+         flint_printf("%E", d_mat_entry(B, i, j)); 
+         if (j < B->c-1) flint_printf(" "); 
+      }
+      flint_printf("]\n");
+   }  
+   flint_printf("]\n"); 
+}
+
+void d_mat_swap(d_mat_t mat1, d_mat_t mat2)
+{
+    if (mat1 != mat2)
+    {
+        d_mat_struct tmp;
+
+        tmp = *mat1;
+        *mat1 = *mat2;
+        *mat2 = tmp;
+    }
+}
+
+void d_mat_set(d_mat_t mat1, const d_mat_t mat2)
+{
+    if (mat1 != mat2)
+    {
+        slong i;
+
+        if (mat2->r && mat2->c)
+            for (i = 0; i < mat2->r; i++)
+                _d_vec_set(mat1->rows[i], mat2->rows[i], mat2->c);
+    }
+}
+
+void d_mat_swap_rows(d_mat_t mat, slong r, slong s)
+{
+	if (mat->entries) {
+    if (r != s)
+    {
+        double * u;
+        
+        u = mat->rows[s];
+        mat->rows[s] = mat->rows[r];
+        mat->rows[r] = u; 
+    }
+}
+}
+
+void d_mat_gso(d_mat_t B, const d_mat_t A)
 {
 	slong i, j, k, flag;
-	double num, den, mu, dot;
 	double t, s;
 	
-	if((double **) B == (double **) A) {		
-		double ** t = d_mat_init(r, c);
-		d_mat_gso(t, A, r, c);
-		for(i = 0; i < r; i++) {
-			for(j = 0; j < c; j++) {
-				d_swap(&B[i][j], &t[i][j]);
-			}
-		}
+	if (B->r != A->r || B->c != A->c) {
+		flint_printf("Exception (d_mat_gso). Incompatible dimensions.\n");
+        abort();
+	}
+	
+	if (B == A) {		
+		d_mat_t t;
+		d_mat_init(t, A->r, A->c);
+		d_mat_gso(t, A);
+		d_mat_swap(B, t);
 		d_mat_clear(t);
 		return;
 	}
 	
-	if(!r)
+	if (!A->r)
 	{
 		return;
 	}
 		
-	for(k = 0; k < c; k++) {
-		for(j = 0; j < r; j++) {
-			B[j][k] = A[j][k];
+	for (k = 0; k < A->c; k++) {
+		for (j = 0; j < A->r; j++) {
+			d_mat_entry(B, j, k) = d_mat_entry(A, j, k);
 		}
 		flag = 1;
 		while (flag) {
 			t = 0;
-			for(i = 0; i < k; i++) {
+			for (i = 0; i < k; i++) {
 				s = 0;
-				for(j = 0; j < r; j++) {
-					s += B[j][i] * B[j][k];
+				for (j = 0; j < A->r; j++) {
+					s += d_mat_entry(B, j, i) * d_mat_entry(B, j, k);
 				}
 				t += s * s;
-				for(j = 0; j < r; j++) {
-					B[j][k] -= s * B[j][i];
+				for (j = 0; j < A->r; j++) {
+					d_mat_entry(B, j, k) -= s * d_mat_entry(B, j, i);
 				}
 			}
 			s = 0;
-			for(j = 0; j < r; j++) {
-				s += B[j][k] * B[j][k];
+			for (j = 0; j < A->r; j++) {
+				s += d_mat_entry(B, j, k) * d_mat_entry(B, j, k);
 			}
 			t += s;
 			flag = 0;
-			if(s < t) {
-				if(s * D_EPS == 0) s = 0;
+			if (s < t) {
+				if (s * D_EPS == 0) s = 0;
 				else flag = 1;
 			}
 		}
 		s = sqrt(s);
 		if(s != 0) s = 1/s;
-		for(j = 0; j < r; j++) {
-			B[j][k] *= s;
+		for(j = 0; j < A->r; j++) {
+			d_mat_entry(B, j, k) *= s;
 		}
-	}
-				
-	for(i = 0; i < c; i++) {
-		for(j = 0; j < r; j++) {
-			B[j][i] = A[j][i];
-		}
-		
-		flag = 1;
-
-		while (flag) {
-		for(j = 0; j < i; j++) {
-			num = B[0][i] * B[0][j];
-					 
-			for(k = 1; k < r; k++) {
-				num += B[k][i] * B[k][j];
-			}
-			
-			den = B[0][j] * B[0][j];
-										
-			for(k = 1; k < r; k++) {
-				den += B[k][j] * B[k][j];
-			}
-			
-			if(fabs(den) > 0)
-			{
-				mu = num / den;
-			
-				for(k = 0; k < r; k++) {
-					B[k][i] -= mu * B[k][j];
-				}
-			}
-		}
-		for (j = 0; j < i; j++) {
-			dot = 0;
-			for(k = 0; k < r; k++) {
-				dot += B[k][i] * B[k][j];
-			}
-			if(fabs(dot) > 0.5e-12) {
-				break;
-			}
-		}
-		if (j == i) {
-			flag = 0;
-		}
-	}
-			
-		for(j = 0; j < i; j++) {
-			num = B[0][i] * B[0][j];
-					 
-			for(k = 1; k < r; k++) {
-				num += B[k][i] * B[k][j];
-			}
-			
-			den = B[0][j] * B[0][j];
-										
-			for(k = 1; k < r; k++) {
-				den += B[k][j] * B[k][j];
-			}
-			
-			if(fabs(den) > 0)
-			{
-				mu = num / den;
-			
-				for(k = 0; k < r; k++) {
-					B[k][i] -= mu * B[k][j];
-				}
-			}
-		}
-		
-		for(j = 0; j < i; j++) {
-			num = B[0][i] * B[0][j];
-					 
-			for(k = 1; k < r; k++) {
-				num += B[k][i] * B[k][j];
-			}
-			
-			den = B[0][j] * B[0][j];
-										
-			for(k = 1; k < r; k++) {
-				den += B[k][j] * B[k][j];
-			}
-			
-			if(fabs(den) > 0)
-			{
-				mu = num / den;
-			
-				for(k = 0; k < r; k++) {
-					B[k][i] -= mu * B[k][j];
-				}
-			}
-		}
-	}
-} */
+	}				
+}
 
 int main(void) 
 {
-	// int i;
+	int i;
     FLINT_TEST_INIT(state);
     
 
-    /* flint_printf("gso....");
+    flint_printf("gso....");
     fflush(stdout);
 
-	for(i = 0; i < 100 * flint_test_multiplier(); i++) {
+	for (i = 0; i < 100 * flint_test_multiplier(); i++) {
         double dot;
         int j, k, l;
         d_mat_t A;
@@ -310,51 +244,32 @@ int main(void)
         
         d_mat_randtest(A, state);
                        
-        // d_mat_gso(A, (void *) A, m, n);
-        
-        for(j = 0; j < n; j++) {
-			for(k = j + 1; k < n; k++) {
+        d_mat_gso(A, A);
+                
+        for (j = 0; j < n; j++) {
+			for (k = j + 1; k < n; k++) {
 				
 				dot = 0;
-				for(l = 0; l < m; l++) {
-				dot += A[l][j] * A[l][k];
+				for (l = 0; l < m; l++) {
+				dot += d_mat_entry(A, l, j) * d_mat_entry(A, l, k);
 				}
 																
 				if (fabs(dot) > D_EPS)
 				{
 					flint_printf("FAIL:\n");
 					flint_printf("A:\n");
-					d_mat_print(A, m, n);
-					printf("%g\n", dot);
-					printf("%d %d\n", j, k);
+					d_mat_print(A);
+					flint_printf("%g\n", dot);
+					flint_printf("%d %d\n", j, k);
 					abort();
 				}	
 			}
 		}
 				
         d_mat_clear(A);
-	} */
-	int i;
-	
-	for(i = 0; i < 100 * flint_test_multiplier(); i++) {
-		int m, n;
-		d_mat_t A;
-	
-		m = n_randint(state, 10);
-		n = n_randint(state, 10);
-		
-		d_mat_init(A, m, n);        
-        
-		d_mat_randtest(A, state);
-				
-		d_mat_swap_rows(A, 0, m-1);
-		
-		d_mat_clear(A);
 	}
 	
-	
-	
-    FLINT_TEST_CLEANUP(state);
+	FLINT_TEST_CLEANUP(state);
     
     flint_printf("PASS\n");
     return EXIT_SUCCESS;

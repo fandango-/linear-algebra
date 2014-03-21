@@ -1,3 +1,30 @@
+/*=============================================================================
+
+    This file is part of FLINT.
+
+    FLINT is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    FLINT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with FLINT; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+
+=============================================================================*/
+/******************************************************************************
+
+    Copyright (C) 2010 William Hart
+    Copyright (C) 2010 Fredrik Johansson
+    Copyright (C) 2014 Abhinav Baid
+
+******************************************************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -83,7 +110,7 @@ void d_mat_init(d_mat_t mat, slong rows, slong cols)
     if ((rows) && (cols))
     {
         slong i;
-        mat->entries = flint_calloc(rows * cols, sizeof(double));
+        mat->entries = flint_malloc(rows * cols * sizeof(double));
         mat->rows = flint_malloc(rows * sizeof(double *));
         
         for (i = 0; i < rows; i++)
@@ -231,7 +258,7 @@ int main(void)
     fflush(stdout);
 
 	for (i = 0; i < 100 * flint_test_multiplier(); i++) {
-        double dot;
+        double dot, norm;
         int j, k, l;
         d_mat_t A;
 
@@ -245,8 +272,20 @@ int main(void)
         d_mat_randtest(A, state);
                        
         d_mat_gso(A, A);
-                
+                        
         for (j = 0; j < n; j++) {
+			norm = 0;
+			for (l = 0; l < m; l++) {
+				norm += d_mat_entry(A, l, j) * d_mat_entry(A, l, j);
+			}
+			if (norm != 0 && fabs(norm - 1) > 3*D_EPS) {
+				flint_printf("FAIL:\n");
+				flint_printf("A:\n");
+				d_mat_print(A);
+				flint_printf("%g\n", norm);
+				flint_printf("%d\n", j);
+				abort();
+			}
 			for (k = j + 1; k < n; k++) {
 				
 				dot = 0;

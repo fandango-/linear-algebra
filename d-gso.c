@@ -91,7 +91,27 @@ void _d_vec_set(double * vec1, const double * vec2, slong len2)
 		for (i = 0; i < len2; i++)
 			vec1[i] = vec2[i];
 	}
-} 
+}
+
+void _d_vec_zero(double * vec, slong len)
+{
+    slong i;
+    for (i = 0; i < len; i++)
+        vec[i] = 0;
+}
+
+int _d_vec_approx_equal(const double * vec1, const double * vec2, slong len)
+{
+    slong i;
+    if (vec1 == vec2)
+        return 1;
+
+    for (i = 0; i < len; i++)
+        if (fabs(vec1[i] - vec2[i]) > 2*D_EPS)
+            return 0;
+
+    return 1;
+}
 
 void d_mat_randtest(d_mat_t mat, flint_rand_t state)
 {
@@ -188,6 +208,86 @@ void d_mat_swap_rows(d_mat_t mat, slong r, slong s)
 }
 }
 
+void d_mat_zero(d_mat_t mat)
+{
+    slong i;
+
+    if (mat->c < 1)
+        return;
+
+    for (i = 0; i < mat->r; i++)
+        _d_vec_zero(mat->rows[i], mat->c);
+}
+
+void d_mat_mul(d_mat_t C, const d_mat_t A, const d_mat_t B)
+{
+    slong ar, bc, br;
+    slong i, j, k;
+
+    ar = A->r;
+    br = B->r;
+    bc = B->c;
+    
+    if (C->r != ar || C->c != bc) {
+		flint_printf("Exception (d_mat_mul). Incompatible dimensions.\n");
+        abort();
+	}
+	
+	if (C == A || C == B)
+    {
+        d_mat_t t;
+        d_mat_init(t, ar, bc);
+        d_mat_mul(t, A, B);
+        d_mat_swap(C, t);
+        d_mat_clear(t);
+        return;
+    }
+
+    if (br == 0)
+    {
+        d_mat_zero(C);
+        return;
+    }
+
+    for (i = 0; i < ar; i++)
+    {
+        for (j = 0; j < bc; j++)
+        {
+            d_mat_entry(C, i, j) = d_mat_entry(A, i, 0)
+								 * d_mat_entry(B, 0, j);
+
+            for (k = 1; k < br; k++)
+            {
+                d_mat_entry(C, i, j) += d_mat_entry(A, i, k)
+									  * d_mat_entry(B, k, j);
+            }
+        }
+    }
+}
+
+int d_mat_approx_equal(const d_mat_t mat1, const d_mat_t mat2)
+{
+    slong j;
+
+    if (mat1->r != mat2->r || mat1->c != mat2->c)
+    {
+        return 0;
+    }
+
+    if (mat1->r == 0 || mat1->c == 0)
+        return 1;
+
+    for (j = 0; j < mat1->r; j++)
+    {
+        if (!_d_vec_approx_equal(mat1->rows[j], mat2->rows[j], mat1->c))
+        {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
 void d_mat_gso(d_mat_t B, const d_mat_t A)
 {
 	slong i, j, k, flag;
@@ -248,8 +348,162 @@ void d_mat_gso(d_mat_t B, const d_mat_t A)
 	}				
 }
 
+void d_mat_qr(d_mat_t B, d_mat_t R, const d_mat_t A)
+{
+	slong i, j, k, flag, orig;
+	double t, s;
+	
+	if (B->r != A->r || B->c != A->c || R->r != A->c || R->c != A->c) {
+		flint_printf("Exception (d_mat_gso). Incompatible dimensions.\n");
+        abort();
+	}
+	
+	if (B == A) {		
+		d_mat_t t;
+		d_mat_init(t, A->r, A->c);
+		d_mat_qr(t, R, A);
+		d_mat_swap(B, t);
+		d_mat_clear(t);
+		return;
+	}
+	
+	if (!A->r)
+	{
+		return;
+	}
+		
+	for (k = 0; k < A->c; k++) {
+		for (j = 0; j < A->r; j++) {
+			d_mat_entry(B, j, k) = d_mat_entry(A, j, k);
+		}
+		orig = flag = 1;
+		while (flag) {
+			t = 0;
+			for (i = 0; i < k; i++) {
+				s = 0;
+				for (j = 0; j < A->r; j++) {
+					s += d_mat_entry(B, j, i) * d_mat_entry(B, j, k);
+				}
+				if (orig) {
+					d_mat_entry(R, i, k) = s;
+				} else {
+					d_mat_entry(R, i, k) += s;
+				}
+				t += s * s;
+				for (j = 0; j < A->r; j++) {
+					d_mat_entry(B, j, k) -= s * d_mat_entry(B, j, i);
+				}
+			}
+			s = 0;
+			for (j = 0; j < A->r; j++) {
+				s += d_mat_entry(B, j, k) * d_mat_entry(B, j, k);
+			}
+			t += s;
+			flag = 0;
+			if (s < t) {
+				orig = 0;
+				if (s * D_EPS == 0) s = 0;
+				else flag = 1;
+			}
+		}
+		d_mat_entry(R, k, k) = s = sqrt(s);
+		if(s != 0) s = 1/s;
+		for(j = 0; j < A->r; j++) {
+			d_mat_entry(B, j, k) *= s;
+		}
+	}				
+}
+
+int test_d_mat_qr(void) {
+	int i;
+    FLINT_TEST_INIT(state);
+    
+
+    flint_printf("qr....");
+    fflush(stdout);
+
+	for (i = 0; i < 100 * flint_test_multiplier(); i++) {
+        double dot, norm;
+        int j, k, l;
+        d_mat_t A, Q, R, B;
+
+        slong m, n;
+
+        m = n_randint(state, 10);
+        n = n_randint(state, 10);
+		
+        d_mat_init(A, m, n);
+        d_mat_init(Q, m, n);
+        d_mat_init(R, n, n);
+        d_mat_init(B, m, n);
+        
+        d_mat_randtest(A, state);
+        d_mat_zero(R);
+                       
+        d_mat_qr(Q, R, A);
+        
+        d_mat_mul(B, Q, R);
+        
+        if(!d_mat_approx_equal(A, B)) {
+			flint_printf("FAIL:\n");
+			flint_printf("A:\n");
+			d_mat_print(A);
+			flint_printf("Q:\n");
+			d_mat_print(Q);
+			flint_printf("R:\n");
+			d_mat_print(R);
+			flint_printf("B:\n");
+			d_mat_print(B);
+			abort();
+		}
+                        
+        for (j = 0; j < n; j++) {
+			norm = 0;
+			for (l = 0; l < m; l++) {
+				norm += d_mat_entry(Q, l, j) * d_mat_entry(Q, l, j);
+			}
+			if (norm != 0 && fabs(norm - 1) > 3*D_EPS) {
+				flint_printf("FAIL:\n");
+				flint_printf("Q:\n");
+				d_mat_print(Q);
+				flint_printf("%g\n", norm);
+				flint_printf("%d\n", j);
+				abort();
+			}
+			for (k = j + 1; k < n; k++) {
+				
+				dot = 0;
+				for (l = 0; l < m; l++) {
+				dot += d_mat_entry(Q, l, j) * d_mat_entry(Q, l, k);
+				}
+																
+				if (fabs(dot) > D_EPS)
+				{
+					flint_printf("FAIL:\n");
+					flint_printf("Q:\n");
+					d_mat_print(Q);
+					flint_printf("%g\n", dot);
+					flint_printf("%d %d\n", j, k);
+					abort();
+				}	
+			}
+		}
+				
+        d_mat_clear(A);
+        d_mat_clear(Q);
+        d_mat_clear(R);
+        d_mat_clear(B);
+	}
+	
+	FLINT_TEST_CLEANUP(state);
+    
+    flint_printf("PASS\n");
+    return EXIT_SUCCESS;
+}
+
 int main(void) 
 {
+	test_d_mat_qr();
 	int i;
     FLINT_TEST_INIT(state);
     
@@ -267,7 +521,7 @@ int main(void)
         m = n_randint(state, 10);
         n = n_randint(state, 10);
 		
-        d_mat_init(A, m, n);        
+        d_mat_init(A, m, n);
         
         d_mat_randtest(A, state);
                        
@@ -313,4 +567,3 @@ int main(void)
     flint_printf("PASS\n");
     return EXIT_SUCCESS;
 }
-
